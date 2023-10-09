@@ -18,15 +18,22 @@ const (
 
 	notificationTimeout = "5000"
 
-	BATTERY_FULL_PNG  = "./icons/battery-full.png"
-	BATTERY_HALF_PNG  = "./icons/battery-half.png"
-	BATTERY_EMPTY_PNG = "./icons/battery-empty.png"
+	BATTERY_FULL_PNG  = "icons/battery-full.png"
+	BATTERY_HALF_PNG  = "icons/battery-half.png"
+	BATTERY_EMPTY_PNG = "icons/battery-empty.png"
 )
 
-var headsetName string
-var batteryStatus int
+var path string
 
-// setLogger and logger level
+type status struct {
+	headsetName   string
+	batteryStatus int
+	threshold     int
+}
+
+var headsets map[string]status = make(map[string]status)
+
+// Set logger and logger level
 func setLogger() {
 	isVerbose := flag.Bool("verbose", false, "display debug logs")
 	flag.Parse()
@@ -55,25 +62,62 @@ func execHeadsetcontrol() {
 		return
 	}
 
-	headsetName = strings.Split(headsetFoundSplit[1], "!")[0]
+	headsetName := strings.Split(headsetFoundSplit[1], "!")[0]
 	headsetBatterySplit := strings.Split(string(output), "Battery: ")
 	if len(headsetBatterySplit) == 1 {
 		log.Debug("Headset usb is connected but the headset is in sleep mode.")
 		return
 	}
 
-	batteryStatus, _ = strconv.Atoi(strings.Split(headsetBatterySplit[1], "%")[0])
+	batteryStatus, _ := strconv.Atoi(strings.Split(headsetBatterySplit[1], "%")[0])
+
+	threshold := batteryStatus / 5
+
 	log.Debug("Headset name: " + headsetName)
 	log.Debug("Battery status: " + strconv.Itoa(batteryStatus))
+	log.Debug("Threshold: " + strconv.Itoa(threshold))
 
-	sendNotification()
+	previousStatus, exists := headsets[headsetName]
+
+	if !exists {
+		headsets[headsetName] = status{
+			headsetName:   headsetName,
+			batteryStatus: batteryStatus,
+			threshold:     threshold,
+		}
+	} else if batteryStatus/5 != previousStatus.threshold {
+		headsets[headsetName] = status{
+			headsetName:   headsetName,
+			batteryStatus: batteryStatus,
+			threshold:     threshold,
+		}
+		sendNotification(headsets[headsetName])
+	}
 }
 
-func sendNotification() {
+// Select icon based on battery percentage
+func selectIconPng(status status) string {
+	var selectedIcon string
+	if status.batteryStatus > 75 {
+		selectedIcon = BATTERY_FULL_PNG
+	} else if status.batteryStatus > 25 {
+		selectedIcon = BATTERY_HALF_PNG
+	} else {
+		selectedIcon = BATTERY_EMPTY_PNG
+	}
+	return path + "/" + selectedIcon
+}
 
-	message := headsetName + " - Battery at " + strconv.Itoa(batteryStatus) + "%"
+// Send notification using notify-send
+func sendNotification(status status) {
+	message := status.headsetName + " - Battery at " + strconv.Itoa(status.batteryStatus) + "%"
 
-	_, err := exec.Command("/usr/bin/notify-send", "-t", notificationTimeout, message).Output()
+	icon := selectIconPng(status)
+	_, err := exec.Command(
+		"/usr/bin/notify-send",
+		"-t", notificationTimeout,
+		"-i", icon,
+		message).Output()
 	if err != nil {
 		log.Error(err.Error())
 	}
@@ -81,6 +125,7 @@ func sendNotification() {
 
 func main() {
 	setLogger()
+	path, _ = os.Getwd()
 
 	for {
 		execHeadsetcontrol()
