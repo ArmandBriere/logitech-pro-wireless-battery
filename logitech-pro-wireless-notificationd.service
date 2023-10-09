@@ -1,0 +1,10 @@
+[Unit]
+Description=Logitech-pro-wireless-notificationd
+
+[Service]
+ExecStart=/usr/local/bin/logitech-pro-wireless-notificationd
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
