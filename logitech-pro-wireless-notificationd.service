@@ -2,7 +2,7 @@
 Description=Logitech-pro-wireless-notificationd
 
 [Service]
-ExecStart=/usr/local/bin/logitech-pro-wireless-notificationd
+ExecStart=/etc/systemd/user/logitech-pro-wireless-notificationd
 Restart=always
 RestartSec=10
 
