@@ -28,7 +28,7 @@ var path string
 type status struct {
 	headsetName   string
 	batteryStatus int
-	threshold     int
+	step          int
 }
 
 var headsets map[string]status = make(map[string]status)
@@ -71,11 +71,11 @@ func execHeadsetcontrol() {
 
 	batteryStatus, _ := strconv.Atoi(strings.Split(headsetBatterySplit[1], "%")[0])
 
-	threshold := batteryStatus / 5
+	step := batteryStatus / 5
 
 	log.Debug("Headset name: " + headsetName)
 	log.Debug("Battery status: " + strconv.Itoa(batteryStatus))
-	log.Debug("Threshold: " + strconv.Itoa(threshold))
+	log.Debug("Step: " + strconv.Itoa(step))
 
 	previousStatus, exists := headsets[headsetName]
 
@@ -83,13 +83,13 @@ func execHeadsetcontrol() {
 		headsets[headsetName] = status{
 			headsetName:   headsetName,
 			batteryStatus: batteryStatus,
-			threshold:     threshold,
+			step:          step,
 		}
-	} else if batteryStatus/5 != previousStatus.threshold {
+	} else if batteryStatus/5 != previousStatus.step {
 		headsets[headsetName] = status{
 			headsetName:   headsetName,
 			batteryStatus: batteryStatus,
-			threshold:     threshold,
+			step:          step,
 		}
 		sendNotification(headsets[headsetName])
 	}
@@ -126,7 +126,6 @@ func sendNotification(status status) {
 func main() {
 	setLogger()
 	path, _ = os.Getwd()
-
 	for {
 		execHeadsetcontrol()
 		time.Sleep(PollingInterval * time.Second)
