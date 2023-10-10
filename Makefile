@@ -31,3 +31,6 @@ enable:
 	sudo systemctl daemon-reload
 	systemctl --user enable --now ${BUILD_TARGET}
 	@echo "Done enabling the service.\n"
+
+status:
+	systemctl --user status logitech-pro-wireless-notificationd
