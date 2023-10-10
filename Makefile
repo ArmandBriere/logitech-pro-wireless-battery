@@ -6,28 +6,28 @@ SYSTEMD_FOLDER = /etc/systemd/user
 install: build disable copy enable
 
 build:
-	@echo -e "\nStart building the source code..."
+	@echo "\nStart building the source code..."
 	go build -o ${BUILD_TARGET}
-	@echo -e "Done building.\n"
+	@echo "Done building.\n"
 
 copy:
-	@echo -e "\nStart copying the service..."
+	@echo "\nStart copying the service..."
 	sudo cp ${BUILD_TARGET}.service ${SYSTEMD_FOLDER}/${BUILD_TARGET}.service
 	sudo cp ${BUILD_TARGET} ${SYSTEMD_FOLDER}/${BUILD_TARGET}
-	@echo -e "Done copying.\n"
+	@echo "Done copying.\n"
 	
-	@echo -e "\nStart copying icons..."
+	@echo "\nStart copying icons..."
 	sudo cp -r icons ${SYSTEMD_FOLDER}
-	@echo -e "Done copying.\n"
+	@echo "Done copying.\n"
 
 disable:
-	@echo -e "\nStart disabling the service..."
+	@echo "\nStart disabling the service..."
 	sudo systemctl daemon-reload
-	systemctl --user disable --now ${BUILD_TARGET}
-	@echo -e "Done disabling the service.\n"
+	-systemctl --user disable --now ${BUILD_TARGET}
+	@echo "Done disabling the service.\n"
 
 enable:
-	@echo -e "\nStart enabling the service..."
+	@echo "\nStart enabling the service..."
 	sudo systemctl daemon-reload
 	systemctl --user enable --now ${BUILD_TARGET}
-	@echo -e "Done enabling the service.\n"
+	@echo "Done enabling the service.\n"
