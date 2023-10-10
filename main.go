@@ -12,15 +12,13 @@ import (
 )
 
 const (
-	PercentageWarning = 30
-	PercentageEmpty   = 10
-	PollingInterval   = 5
+	pollingInterval = 5
 
 	notificationTimeout = "5000"
 
-	BATTERY_FULL_PNG  = "icons/battery-full.png"
-	BATTERY_HALF_PNG  = "icons/battery-half.png"
-	BATTERY_EMPTY_PNG = "icons/battery-empty.png"
+	batteryFullPNG  = "icons/battery-full.png"
+	batteryHalfPNG  = "icons/battery-half.png"
+	batteryEmptyPNG = "icons/battery-empty.png"
 )
 
 var path string
@@ -99,11 +97,11 @@ func execHeadsetcontrol() {
 func selectIconPng(status status) string {
 	var selectedIcon string
 	if status.batteryStatus > 75 {
-		selectedIcon = BATTERY_FULL_PNG
+		selectedIcon = batteryFullPNG
 	} else if status.batteryStatus > 25 {
-		selectedIcon = BATTERY_HALF_PNG
+		selectedIcon = batteryHalfPNG
 	} else {
-		selectedIcon = BATTERY_EMPTY_PNG
+		selectedIcon = batteryEmptyPNG
 	}
 	return path + "/" + selectedIcon
 }
@@ -128,6 +126,6 @@ func main() {
 	path, _ = os.Getwd()
 	for {
 		execHeadsetcontrol()
-		time.Sleep(PollingInterval * time.Second)
+		time.Sleep(pollingInterval * time.Second)
 	}
 }
