@@ -47,7 +47,7 @@ func setLogger() {
 
 // Run headsetcontrol binary to get headset info
 func execHeadsetcontrol() {
-	output, err := exec.Command("/usr/bin/headsetcontrol", "-b").Output()
+	output, err := exec.Command("headsetcontrol", "-b").Output()
 	if err != nil {
 		log.Debug("Headset not found.")
 		return
@@ -114,7 +114,7 @@ func sendNotification(status status) {
 
 	icon := selectIconPng(status)
 	_, err := exec.Command(
-		"/usr/bin/notify-send",
+		"notify-send",
 		"-t", notificationTimeout,
 		"-i", icon,
 		message).Output()
