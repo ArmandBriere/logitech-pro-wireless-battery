@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	pollingInterval = 5
+	pollingInterval           = 5
+	secondBetweenNotification = 60
 
 	notificationTimeout = "5000"
 
@@ -24,9 +25,10 @@ const (
 var path string
 
 type status struct {
-	headsetName   string
-	batteryStatus int
-	step          int
+	headsetName           string
+	batteryStatus         int
+	step                  int
+	notificationTimestamp int64
 }
 
 var headsets map[string]status = make(map[string]status)
@@ -76,18 +78,23 @@ func execHeadsetcontrol() {
 	log.Debug("Step: " + strconv.Itoa(step))
 
 	previousStatus, exists := headsets[headsetName]
+	sec := time.Now().Unix()
 
 	if !exists {
 		headsets[headsetName] = status{
-			headsetName:   headsetName,
-			batteryStatus: batteryStatus,
-			step:          step,
+			headsetName:           headsetName,
+			batteryStatus:         batteryStatus,
+			step:                  step,
+			notificationTimestamp: sec,
 		}
-	} else if batteryStatus/5 != previousStatus.step {
+		sendNotification(headsets[headsetName])
+	} else if previousStatus.notificationTimestamp+secondBetweenNotification < sec &&
+		batteryStatus/5 != previousStatus.step {
 		headsets[headsetName] = status{
-			headsetName:   headsetName,
-			batteryStatus: batteryStatus,
-			step:          step,
+			headsetName:           headsetName,
+			batteryStatus:         batteryStatus,
+			step:                  step,
+			notificationTimestamp: sec,
 		}
 		sendNotification(headsets[headsetName])
 	}
