@@ -13,7 +13,7 @@ import (
 
 const (
 	pollingInterval           = 5
-	secondBetweenNotification = 60
+	secondBetweenNotification = 60 * 5
 
 	notificationTimeout = "5000"
 
@@ -80,16 +80,8 @@ func execHeadsetcontrol() {
 	previousStatus, exists := headsets[headsetName]
 	sec := time.Now().Unix()
 
-	if !exists {
-		headsets[headsetName] = status{
-			headsetName:           headsetName,
-			batteryStatus:         batteryStatus,
-			step:                  step,
-			notificationTimestamp: sec,
-		}
-		sendNotification(headsets[headsetName])
-	} else if previousStatus.notificationTimestamp+secondBetweenNotification < sec &&
-		batteryStatus/5 != previousStatus.step {
+	if !exists || (previousStatus.notificationTimestamp+secondBetweenNotification < sec &&
+		batteryStatus/5 != previousStatus.step) {
 		headsets[headsetName] = status{
 			headsetName:           headsetName,
 			batteryStatus:         batteryStatus,
