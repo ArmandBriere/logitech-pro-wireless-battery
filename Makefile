@@ -5,32 +5,42 @@ SYSTEMD_FOLDER = /etc/systemd/user
 
 install: build disable copy enable
 
+test:
+	@echo "Start testing the source code..."
+	go test -coverprofile=c.out
+	@echo "Done testing."
+
+coverage: test
+	@echo "Start generating coverage report..."
+	go tool cover -html=c.out
+	@echo "Done generating coverage report."
+
 build:
-	@echo "\nStart building the source code..."
+	@echo "Start building the source code..."
 	go build -o ${BUILD_TARGET}
-	@echo "Done building.\n"
+	@echo "Done building."
 
 copy:
-	@echo "\nStart copying the service..."
+	@echo "Start copying the service..."
 	sudo cp ${BUILD_TARGET}.service ${SYSTEMD_FOLDER}/${BUILD_TARGET}.service
 	sudo cp ${BUILD_TARGET} ${SYSTEMD_FOLDER}/${BUILD_TARGET}
-	@echo "Done copying.\n"
+	@echo "Done copying."
 	
-	@echo "\nStart copying icons..."
+	@echo "Start copying icons..."
 	sudo cp -r icons ${SYSTEMD_FOLDER}
-	@echo "Done copying.\n"
+	@echo "Done copying."
 
 disable:
-	@echo "\nStart disabling the service..."
+	@echo "Start disabling the service..."
 	sudo systemctl daemon-reload
 	-systemctl --user disable --now ${BUILD_TARGET}
-	@echo "Done disabling the service.\n"
+	@echo "Done disabling the service."
 
 enable:
-	@echo "\nStart enabling the service..."
+	@echo "Start enabling the service..."
 	sudo systemctl daemon-reload
 	systemctl --user enable --now ${BUILD_TARGET}
-	@echo "Done enabling the service.\n"
+	@echo "Done enabling the service."
 
 status:
 	systemctl --user status logitech-pro-wireless-notificationd
