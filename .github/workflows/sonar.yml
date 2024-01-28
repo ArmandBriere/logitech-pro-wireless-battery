@@ -6,13 +6,27 @@ on:
       - main
 
 jobs:
-  sonar:
-    name: Sonar scan
+  go-test:
+    name: Go test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          fetch-depth: 0
+          go-version: 1.21
+
+      - name: Make - Run go test
+        run: make test
+
+  sonar:
+    name: Sonar scan
+    runs-on: ubuntu-latest
+    needs: go-test
+
+    steps:
+      - uses: actions/checkout@v3
       - uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
