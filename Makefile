@@ -7,7 +7,7 @@ install: build disable copy enable
 
 test:
 	@echo "Start testing the source code..."
-	go test -coverprofile=c.out
+	go test -covermode=atomic -coverprofile=coverage.out ./...
 	@echo "Done testing."
 
 coverage: test
