@@ -22,8 +22,6 @@ const (
 	batteryEmptyPNG = "icons/battery-empty.png"
 )
 
-var path string
-
 type status struct {
 	headsetName           string
 	batteryStatus         int
@@ -31,6 +29,7 @@ type status struct {
 	notificationTimestamp int64
 }
 
+var path string
 var headsets map[string]status = make(map[string]status)
 
 // Set logger and logger level
@@ -92,29 +91,20 @@ func execHeadsetcontrol() {
 	}
 }
 
-// Select icon based on battery percentage
-func selectIconPng(status status) string {
-	var selectedIcon string
-	if status.batteryStatus > 75 {
-		selectedIcon = batteryFullPNG
-	} else if status.batteryStatus > 25 {
-		selectedIcon = batteryHalfPNG
-	} else {
-		selectedIcon = batteryEmptyPNG
-	}
-	return path + "/" + selectedIcon
-}
 
 // Send notification using notify-send
 func sendNotification(status status) {
 	message := status.headsetName + " - Battery at " + strconv.Itoa(status.batteryStatus) + "%"
 
 	icon := selectIconPng(status)
-	_, err := exec.Command(
+	cmd := shellCommand(
 		"notify-send",
 		"-t", notificationTimeout,
 		"-i", icon,
-		message).Output()
+		message,
+	)
+
+	_, err := cmd.Output()
 	if err != nil {
 		log.Error(err.Error())
 	}
