@@ -91,7 +91,6 @@ func execHeadsetcontrol() {
 	}
 }
 
-
 // Send notification using notify-send
 func sendNotification(status status) {
 	message := status.headsetName + " - Battery at " + strconv.Itoa(status.batteryStatus) + "%"

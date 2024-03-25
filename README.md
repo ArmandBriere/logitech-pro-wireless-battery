@@ -1,6 +1,6 @@
 # Logitech Pro Wireless Battery
 
-HeadsetControl daemon listenning to headset battery state
+HeadsetControl daemon listening to headset battery state
 
 ## Installation
 
@@ -16,6 +16,48 @@ cd logitech-pro-wireless-battery
 ```bash
 make install
 ```
+
+### Headsetcontrol
+
+- This package need to be [installed](https://github.com/Sapd/HeadsetControl)
+
+```bash
+git clone git@github.com:Sapd/HeadsetControl.git
+
+cd HeadsetControl
+mkdir build && cd build
+cmake ..
+make install
+```
+
+#### How to resolve permission denied for non-root users
+
+Error example:
+
+```txt
+Failed to open requested device.
+ HID Error: Failed to open a device with path '/dev/hidraw5': Permission denied
+```
+
+To fix the issue, add a file with the following line to `/etc/udev/rules.d` (in case of manjaro / arch you want to create a new file in /etc/udev/rules.d)
+
+`sudo nano /etc/udev/rules.d/46-logiops-hidraw.rules`
+
+content:
+```txt
+# Assigns the hidraw devices to group hidraw, and gives that group RW access:
+KERNEL=="hidraw[0-9]*", GROUP="hidraw", MODE="0660"
+```
+
+- Add the group hidraw if it does not already exist:
+
+`sudo groupadd --system hidraw`
+
+- Add the users who will run logid to that group:
+
+`sudo usermod -G hidraw -a $USER`
+
+- Restart
 
 ### Manual
 
