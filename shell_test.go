@@ -46,21 +46,21 @@ func TestSendNotification(t *testing.T) {
 		{
 			status: status{
 				batteryStatus: 80,
-				headsetName:   "Logitech Pro Wireless",
+				deviceName:    "Logitech Pro Wireless",
 			},
 			batteryIcon: batteryFullPNG,
 		},
 		{
 			status: status{
 				batteryStatus: 50,
-				headsetName:   "SteelSeries Arctis 7",
+				deviceName:    "SteelSeries Arctis 7",
 			},
 			batteryIcon: batteryHalfPNG,
 		},
 		{
 			status: status{
 				batteryStatus: 20,
-				headsetName:   "Sony WH-1000XM3",
+				deviceName:    "Sony WH-1000XM3",
 			},
 			batteryIcon: batteryEmptyPNG,
 		},
@@ -70,7 +70,7 @@ func TestSendNotification(t *testing.T) {
 	for _, tc := range tests {
 		expectedArgs := append(defaultArgs, []string{
 			fmt.Sprintf("/%s", tc.batteryIcon),
-			fmt.Sprintf("%s - Battery at %d%%", tc.status.headsetName, tc.status.batteryStatus),
+			fmt.Sprintf("%s - Battery at %d%%", tc.status.deviceName, tc.status.batteryStatus),
 		}...)
 
 		sendNotification(tc.status)

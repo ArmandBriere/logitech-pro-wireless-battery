@@ -19,7 +19,7 @@ make install
 
 ### Headsetcontrol
 
-- This package need to be [installed](https://github.com/Sapd/HeadsetControl)
+- This package is required. Follow the [installation guide](https://github.com/Sapd/HeadsetControl)
 
 ```bash
 git clone git@github.com:Sapd/HeadsetControl.git
@@ -28,6 +28,17 @@ cd HeadsetControl
 mkdir build && cd build
 cmake ..
 make install
+```
+
+### Solaar
+
+- This package is required. Follow the [installation guide](https://github.com/pwr-Solaar/Solaar)
+
+
+On Arch Linux, you can install it with the following command:
+
+```bash
+yay -S solaar
 ```
 
 #### How to resolve permission denied for non-root users
@@ -81,6 +92,6 @@ systemctl --user enable --now logitech-pro-wireless-notificationd
 - The program can be run in verbose mode to get debug logs
 
 ```bash
-go run main.go --verbose
+go run . --verbose
 ```
 
