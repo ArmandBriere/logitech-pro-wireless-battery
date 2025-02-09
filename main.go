@@ -53,8 +53,8 @@ func setLogger() {
 	slog.SetDefault(logger)
 }
 
-// Run headsetcontrol binary to get headset info
-func execHeadsetcontrol() {
+// checkHeadsetBattery check the battery status of the headset
+func checkHeadsetBattery() {
 	output, err := exec.Command("headsetcontrol", "-b").Output()
 	if err != nil {
 		slog.Debug("Headset not found.")
@@ -79,6 +79,7 @@ func execHeadsetcontrol() {
 
 	batteryStatus, _ := strconv.Atoi(strings.Split(headsetBatterySplit[1], "%")[0])
 
+	headsetName = "🎧️ " + headsetName
 	handleBatteryStatus(headsetName, batteryStatus)
 }
 
@@ -120,8 +121,8 @@ func checkMouseBattery() {
 		return
 	}
 
+	deviceName = "🖱️ " + deviceName
 	handleBatteryStatus(deviceName, batteryStatus)
-
 }
 
 // getMouseBattery extracts the battery percentage of the mouse
@@ -183,6 +184,7 @@ func main() {
 	path, _ = os.Getwd()
 	for {
 		slog.Debug("Polling...")
+		checkHeadsetBattery()
 		checkMouseBattery()
 		time.Sleep(pollingInterval * time.Second)
 	}
