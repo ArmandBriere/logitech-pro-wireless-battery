@@ -2,20 +2,22 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
+	"os/signal"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
 const (
-	pollingInterval           = 5
-	secondBetweenNotification = 60 * 5
+	pollingInterval             = 5
+	secondsBetweenNotifications = 60 * 5
 
 	notificationTimeout = "5000"
 
@@ -24,17 +26,28 @@ const (
 	batteryEmptyPNG = "icons/battery-empty.png"
 )
 
-type status struct {
-	deviceName            string
+type deviceStatus struct {
 	batteryStatus         int
 	step                  int
 	notificationTimestamp int64
 }
 
-var path string
-var devices map[string]status = make(map[string]status)
+type monitor struct {
+	devices    map[string]deviceStatus
+	execCmd    func(name string, arg ...string) IShellCommand
+	mouseName  string
+	workingDir string
+}
 
-// Set logger and logger level
+func newMonitor(mouseName, workingDir string) *monitor {
+	return &monitor{
+		devices:    make(map[string]deviceStatus),
+		execCmd:    shellCommandWrapper,
+		mouseName:  mouseName,
+		workingDir: workingDir,
+	}
+}
+
 func setLogger() {
 	isVerbose := flag.Bool("verbose", false, "display debug logs")
 	flag.Parse()
@@ -53,9 +66,8 @@ func setLogger() {
 	slog.SetDefault(logger)
 }
 
-// checkHeadsetBattery check the battery status of the headset
-func checkHeadsetBattery() {
-	output, err := exec.Command("headsetcontrol", "-b").Output()
+func (m *monitor) checkHeadsetBattery() {
+	output, err := m.execCmd("headsetcontrol", "-b").Output()
 	if err != nil {
 		slog.Debug("Headset not found.")
 		return
@@ -64,8 +76,7 @@ func checkHeadsetBattery() {
 	slog.Debug(string(output))
 
 	headsetFoundSplit := strings.Split(string(output), "Found ")
-
-	if len(strings.Split(string(output), "Found ")) == 1 {
+	if len(headsetFoundSplit) == 1 {
 		slog.Debug("Headset not found.")
 		return
 	}
@@ -77,55 +88,74 @@ func checkHeadsetBattery() {
 		return
 	}
 
-	batteryStatus, _ := strconv.Atoi(strings.Split(headsetBatterySplit[1], "%")[0])
+	batteryStatus, err := strconv.Atoi(strings.Split(headsetBatterySplit[1], "%")[0])
+	if err != nil {
+		slog.Debug("Failed to parse headset battery percentage", "error", err)
+		return
+	}
 
 	headsetName = "🎧️ " + headsetName
-	handleBatteryStatus(headsetName, batteryStatus)
+	m.handleBatteryStatus(headsetName, batteryStatus)
 }
 
-// handleBatteryStatus decides to send notification or not based on battery level
-func handleBatteryStatus(deviceName string, batteryStatus int) {
+func (m *monitor) handleBatteryStatus(deviceName string, batteryStatus int) {
 	step := batteryStatus / 5
 
 	slog.Debug("Device name: " + deviceName)
 	slog.Debug("Battery status: " + strconv.Itoa(batteryStatus))
 	slog.Debug("Step: " + strconv.Itoa(step))
 
-	previousStatus, exists := devices[deviceName]
+	previousStatus, exists := m.devices[deviceName]
 	sec := time.Now().Unix()
 
-	if !exists || (previousStatus.notificationTimestamp+secondBetweenNotification < sec &&
+	if !exists || (previousStatus.notificationTimestamp+secondsBetweenNotifications < sec &&
 		batteryStatus/5 != previousStatus.step) {
-		devices[deviceName] = status{
-			deviceName:            deviceName,
+		m.devices[deviceName] = deviceStatus{
 			batteryStatus:         batteryStatus,
 			step:                  step,
 			notificationTimestamp: sec,
 		}
-		sendNotification(devices[deviceName])
+		m.sendNotification(deviceName, batteryStatus)
 	}
 }
 
-// checkMouseBattery check the battery status of the mouse
-func checkMouseBattery() {
-	output, err := exec.Command("solaar", "show").Output()
+func (m *monitor) checkMouseBattery() {
+	output, err := m.execCmd("solaar", "show").Output()
 	if err != nil {
 		slog.Debug("Solaar not found.")
 		return
 	}
 
-	deviceName := "PRO X Wireless"
-	batteryStatus, err := getMouseBattery(string(output), deviceName)
+	batteryStatus, err := getMouseBattery(string(output), m.mouseName)
 	if err != nil {
 		slog.Debug("Mouse not found.")
 		return
 	}
 
-	deviceName = "🖱️ " + deviceName
-	handleBatteryStatus(deviceName, batteryStatus)
+	deviceName := "🖱️ " + m.mouseName
+	m.handleBatteryStatus(deviceName, batteryStatus)
 }
 
-// getMouseBattery extracts the battery percentage of the mouse
+func (m *monitor) sendNotification(deviceName string, batteryStatus int) {
+	slog.Debug("Sending notification", "device", deviceName, "battery", batteryStatus)
+	message := deviceName + " - Battery at " + strconv.Itoa(batteryStatus) + "%"
+
+	icon := selectIcon(m.workingDir, batteryStatus)
+	cmd := m.execCmd(
+		"notify-send",
+		"-t", notificationTimeout,
+		"-i", icon,
+		message,
+	)
+
+	data, err := cmd.Output()
+	slog.Debug("Notification sent", "data", string(data))
+	if err != nil {
+		slog.Debug("Error sending notification")
+		slog.Error(err.Error())
+	}
+}
+
 func getMouseBattery(input string, mouseName string) (int, error) {
 	scanner := bufio.NewScanner(strings.NewReader(input))
 	inLightspeedSection := false
@@ -135,7 +165,6 @@ func getMouseBattery(input string, mouseName string) (int, error) {
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 
-		// Detect sections
 		if line == "Lightspeed Receiver" {
 			inLightspeedSection = true
 			continue
@@ -158,34 +187,35 @@ func getMouseBattery(input string, mouseName string) (int, error) {
 	return 0, fmt.Errorf("mouse battery not found")
 }
 
-// Send notification using notify-send
-func sendNotification(status status) {
-	slog.Debug("Sending notification", "status", status)
-	message := status.deviceName + " - Battery at " + strconv.Itoa(status.batteryStatus) + "%"
-
-	icon := selectIconPng(status)
-	cmd := shellCommand(
-		"notify-send",
-		"-t", notificationTimeout,
-		"-i", icon,
-		message,
-	)
-
-	data, err := cmd.Output()
-	slog.Debug("Notification sent", "data", string(data))
-	if err != nil {
-		slog.Debug("Error sending notification")
-		slog.Error(err.Error())
-	}
-}
-
 func main() {
 	setLogger()
-	path, _ = os.Getwd()
+
+	mouseName := flag.String("mouse", "PRO X Wireless", "mouse device name")
+	flag.Parse()
+
+	workingDir, err := os.Getwd()
+	if err != nil {
+		slog.Error("Failed to get working directory", "error", err)
+		os.Exit(1)
+	}
+
+	m := newMonitor(*mouseName, workingDir)
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+
+	slog.Info("Starting battery monitor", "mouse", *mouseName)
+
 	for {
-		slog.Debug("Polling...")
-		checkHeadsetBattery()
-		checkMouseBattery()
-		time.Sleep(pollingInterval * time.Second)
+		select {
+		case <-ctx.Done():
+			slog.Info("Shutting down battery monitor")
+			return
+		default:
+			slog.Debug("Polling...")
+			m.checkHeadsetBattery()
+			m.checkMouseBattery()
+			time.Sleep(pollingInterval * time.Second)
+		}
 	}
 }

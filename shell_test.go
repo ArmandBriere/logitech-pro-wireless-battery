@@ -6,85 +6,78 @@ import (
 )
 
 type shellCommandMock struct {
-	RunFunc func() error
+	args []string
+	name string
 }
 
-// Output implements IShellCommand.
-func (shellCommandMock) Output() ([]byte, error) {
+func (s *shellCommandMock) Output() ([]byte, error) {
 	return []byte(""), nil
 }
 
-func (sc shellCommandMock) Run() error {
-	return sc.RunFunc()
+func (s *shellCommandMock) Run() error {
+	return nil
 }
 
 func TestSendNotification(t *testing.T) {
-	var args []string
-	var actualProgramName string
+	workingDir := "/home/user/project"
 
-	// Mock shellCommand and extract programName and args
-	shellCommand = func(programName string, arg ...string) IShellCommand {
-		args = arg
-		actualProgramName = programName
-		return shellCommandMock{
-			RunFunc: func() error {
-				return nil
-			},
-		}
-	}
-
-	// Prepare test data
-	defaultArgs := []string{
-		"-t",
-		"5000",
-		"-i",
-	}
 	var tests = []struct {
-		status      status
-		batteryIcon string
+		name          string
+		deviceName    string
+		batteryStatus int
+		batteryIcon   string
 	}{
 		{
-			status: status{
-				batteryStatus: 80,
-				deviceName:    "Logitech Pro Wireless",
-			},
-			batteryIcon: batteryFullPNG,
+			name:          "full battery",
+			deviceName:    "Logitech Pro Wireless",
+			batteryStatus: 80,
+			batteryIcon:   workingDir + "/" + batteryFullPNG,
 		},
 		{
-			status: status{
-				batteryStatus: 50,
-				deviceName:    "SteelSeries Arctis 7",
-			},
-			batteryIcon: batteryHalfPNG,
+			name:          "half battery",
+			deviceName:    "SteelSeries Arctis 7",
+			batteryStatus: 50,
+			batteryIcon:   workingDir + "/" + batteryHalfPNG,
 		},
 		{
-			status: status{
-				batteryStatus: 20,
-				deviceName:    "Sony WH-1000XM3",
-			},
-			batteryIcon: batteryEmptyPNG,
+			name:          "low battery",
+			deviceName:    "Sony WH-1000XM3",
+			batteryStatus: 20,
+			batteryIcon:   workingDir + "/" + batteryEmptyPNG,
 		},
 	}
 
-	// Run tests
 	for _, tc := range tests {
-		expectedArgs := append(defaultArgs, []string{
-			fmt.Sprintf("/%s", tc.batteryIcon),
-			fmt.Sprintf("%s - Battery at %d%%", tc.status.deviceName, tc.status.batteryStatus),
-		}...)
-
-		sendNotification(tc.status)
-
-		if actualProgramName != "notify-send" {
-			t.Errorf("Bad program name - Expected %s, but got %s", "notify-send", actualProgramName)
-		}
-		if len(args) != len(expectedArgs) {
-			t.Errorf("args len and expectedArgs are not the same, %d != %d", len(expectedArgs), len(args))
-		}
-		for i, arg := range args {
-			if arg != expectedArgs[i] {
-				t.Errorf("args[%d] and expectedArgs[%d] are not the same, %s != %s", i, i, expectedArgs[i], arg)
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &shellCommandMock{}
+			m := &monitor{
+				devices:    make(map[string]deviceStatus),
+				execCmd:    func(name string, arg ...string) IShellCommand { mock.name = name; mock.args = arg; return mock },
+				workingDir: workingDir,
 			}
-		}
+
+			m.sendNotification(tc.deviceName, tc.batteryStatus)
+
+			if mock.name != "notify-send" {
+				t.Errorf("Bad program name - Expected %s, but got %s", "notify-send", mock.name)
+			}
+
+			expectedArgs := []string{
+				"-t",
+				"5000",
+				"-i",
+				tc.batteryIcon,
+				fmt.Sprintf("%s - Battery at %d%%", tc.deviceName, tc.batteryStatus),
+			}
+
+			if len(mock.args) != len(expectedArgs) {
+				t.Errorf("args len and expectedArgs are not the same, %d != %d", len(expectedArgs), len(mock.args))
+			}
+			for i, arg := range mock.args {
+				if arg != expectedArgs[i] {
+					t.Errorf("args[%d] and expectedArgs[%d] are not the same, %s != %s", i, i, expectedArgs[i], arg)
+				}
+			}
+		})
 	}
 }

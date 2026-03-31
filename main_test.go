@@ -90,3 +90,22 @@ Battery: 100%`,
 		}
 	}
 }
+
+func TestHandleBatteryStatus(t *testing.T) {
+	m := newMonitor("PRO X Wireless", "/tmp")
+
+	m.handleBatteryStatus("Test Device", 80)
+	if len(m.devices) != 1 {
+		t.Errorf("Expected 1 device, got %d", len(m.devices))
+	}
+
+	m.handleBatteryStatus("Test Device", 80)
+	if len(m.devices) != 1 {
+		t.Errorf("Expected 1 device (no duplicate), got %d", len(m.devices))
+	}
+
+	m.handleBatteryStatus("Another Device", 50)
+	if len(m.devices) != 2 {
+		t.Errorf("Expected 2 devices, got %d", len(m.devices))
+	}
+}

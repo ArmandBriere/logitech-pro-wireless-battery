@@ -7,12 +7,13 @@ install: build disable copy enable
 
 test:
 	@echo "Start testing the source code..."
+	go vet ./...
 	go test -covermode=atomic -coverprofile=coverage.out ./...
 	@echo "Done testing."
 
 coverage: test
 	@echo "Start generating coverage report..."
-	go tool cover -html=c.out
+	go tool cover -html=coverage.out
 	@echo "Done generating coverage report."
 
 build:

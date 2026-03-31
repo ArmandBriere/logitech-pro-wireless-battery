@@ -1,12 +1,13 @@
 package main
 
-// Select icon based on battery percentage
-func selectIconPng(status status) string {
-	var selectedIcon string = batteryEmptyPNG
-	if status.batteryStatus >= 75 {
+import "path/filepath"
+
+func selectIcon(workingDir string, batteryStatus int) string {
+	selectedIcon := batteryEmptyPNG
+	if batteryStatus >= 75 {
 		selectedIcon = batteryFullPNG
-	} else if status.batteryStatus >= 25 {
+	} else if batteryStatus >= 25 {
 		selectedIcon = batteryHalfPNG
 	}
-	return path + "/" + selectedIcon
+	return filepath.Join(workingDir, selectedIcon)
 }
