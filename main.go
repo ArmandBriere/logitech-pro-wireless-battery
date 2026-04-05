@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -30,6 +31,30 @@ type deviceStatus struct {
 	batteryStatus         int
 	step                  int
 	notificationTimestamp int64
+}
+
+type HeadsetControlOutput struct {
+	Name          string `json:"name"`
+	Version       string `json:"version"`
+	APIVersion    string `json:"api_version"`
+	HidapiVersion string `json:"hidapi_version"`
+	DeviceCount   int    `json:"device_count"`
+	Devices       []struct {
+		Status          string   `json:"status"`
+		Device          string   `json:"device"`
+		Vendor          string   `json:"vendor"`
+		Product         string   `json:"product"`
+		IDVendor        string   `json:"id_vendor"`
+		IDProduct       string   `json:"id_product"`
+		Capabilities    []string `json:"capabilities"`
+		CapabilitiesStr []string `json:"capabilities_str"`
+		Battery         struct {
+			Status         string `json:"status"`
+			Level          int    `json:"level"`
+			VoltageMv      int    `json:"voltage_mv"`
+			TimeToEmptyMin int    `json:"time_to_empty_min"`
+		} `json:"battery"`
+	} `json:"devices"`
 }
 
 type monitor struct {
@@ -67,7 +92,7 @@ func setLogger() {
 }
 
 func (m *monitor) checkHeadsetBattery() {
-	output, err := m.execCmd("headsetcontrol", "-b").Output()
+	output, err := m.execCmd("headsetcontrol", "-b", "-o", "json").Output()
 	if err != nil {
 		slog.Debug("Headset not found.")
 		return
@@ -75,26 +100,19 @@ func (m *monitor) checkHeadsetBattery() {
 
 	slog.Debug(string(output))
 
-	headsetFoundSplit := strings.Split(string(output), "Found ")
-	if len(headsetFoundSplit) == 1 {
-		slog.Debug("Headset not found.")
+	jsonOutput := &HeadsetControlOutput{}
+	if err := json.Unmarshal(output, jsonOutput); err != nil {
+		slog.Debug("Failed to parse headsetcontrol JSON output", "error", err)
 		return
 	}
 
-	headsetName := strings.Split(headsetFoundSplit[1], "!")[0]
-	headsetBatterySplit := strings.Split(string(output), "Battery: ")
-	if len(headsetBatterySplit) == 1 {
-		slog.Debug("Headset usb is connected but the headset is in sleep mode.")
+	if jsonOutput.DeviceCount == 0 {
+		slog.Debug("No headset connected.")
 		return
 	}
 
-	batteryStatus, err := strconv.Atoi(strings.Split(headsetBatterySplit[1], "%")[0])
-	if err != nil {
-		slog.Debug("Failed to parse headset battery percentage", "error", err)
-		return
-	}
-
-	headsetName = "🎧️ " + headsetName
+	headsetName := "🎧️ " + jsonOutput.Devices[0].Device
+	batteryStatus := jsonOutput.Devices[0].Battery.Level
 	m.handleBatteryStatus(headsetName, batteryStatus)
 }
 
